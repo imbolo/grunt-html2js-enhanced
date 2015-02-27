@@ -23,7 +23,7 @@ module.exports = function(grunt) {
 
   // convert Windows file separator URL path separator
   var normalizePath = function(p) {
-    if ( path.sep !== '/' ) {
+    if (path.sep !== '/') {
       p = p.replace(/\\/g, '/');
     }
     return p;
@@ -80,21 +80,22 @@ module.exports = function(grunt) {
 
   // compile a template to an angular module
   var compileTemplate = function(moduleName, filepath, options) {
-    var quoteChar    = options.quoteChar;
+    var quoteChar = options.quoteChar;
     var indentString = options.indentString;
-    var withModule   = !options.singleModule;
-    var content      = getContent(filepath, options);
+    var withModule = !options.singleModule;
+    var content = getContent(filepath, options);
     var doubleIndent = indentString + indentString;
-    var strict       = (options.useStrict) ? indentString + quoteChar + 'use strict' + quoteChar + ';\n' : '';
+    var strict = (options.useStrict) ? indentString + quoteChar + 'use strict' + quoteChar + ';\n' : '';
     var compiled = '';
-
+    var contentHeaderString = options.contentHeaderString || '$templateCache.put(';
+    var contentFooterString = options.contentFooterString || ');';
     if (withModule) {
       compiled += 'angular.module(' + quoteChar + moduleName +
         quoteChar + ', []).run([' + quoteChar + '$templateCache' + quoteChar + ', function($templateCache) {\n' + strict;
     }
 
-    compiled += indentString + '$templateCache.put(' + quoteChar + moduleName + quoteChar +
-      ',\n' + doubleIndent  + quoteChar +  content + quoteChar + ');';
+    compiled += indentString + contentHeaderString + quoteChar + moduleName + quoteChar +
+      ',\n' + doubleIndent + quoteChar + content + quoteChar + contentFooterString;
 
     if (withModule) {
       compiled += '\n}]);\n';
@@ -105,9 +106,9 @@ module.exports = function(grunt) {
 
   // compile a template to an angular module
   var compileCoffeeTemplate = function(moduleName, filepath, options) {
-    var quoteChar    = options.quoteChar;
+    var quoteChar = options.quoteChar;
     var indentString = options.indentString;
-    var withModule   = !options.singleModule;
+    var withModule = !options.singleModule;
     var content = getContent(filepath, options);
     var doubleIndent = indentString + indentString;
     var compiled = '';
@@ -118,7 +119,7 @@ module.exports = function(grunt) {
     }
 
     compiled += indentString + '$templateCache.put(' + quoteChar + moduleName + quoteChar +
-      ',\n' + doubleIndent  + quoteChar +  content + quoteChar + ')';
+      ',\n' + doubleIndent + quoteChar + content + quoteChar + ')';
 
     if (withModule) {
       compiled += '\n])\n';
@@ -139,7 +140,9 @@ module.exports = function(grunt) {
       target: 'js',
       htmlmin: {},
       process: false,
-      jade: { pretty: true },
+      jade: {
+        pretty: true
+      },
       singleModule: false
     });
 
@@ -151,7 +154,7 @@ module.exports = function(grunt) {
       // f.dest must be a string or write will fail
 
       var moduleNames = [];
-
+      f.contentHeaderString !== undefined && (options.contentHeaderString = f.contentHeaderString);
       var modules = f.src.filter(existsFilter).map(function(filepath) {
 
         var moduleName = normalizePath(path.relative(options.base, filepath));
@@ -170,15 +173,12 @@ module.exports = function(grunt) {
       });
 
       counter += modules.length;
-      modules  = modules.join('\n');
+      modules = modules.join('\n');
 
       var fileHeader = options.fileHeaderString !== '' ? options.fileHeaderString + '\n' : '';
       var fileFooter = options.fileFooterString !== '' ? options.fileFooterString + '\n' : '';
       var bundle = "";
       var targetModule = f.module || options.module;
-      var indentString = options.indentString;
-      var quoteChar    = options.quoteChar;
-      var strict       = (options.useStrict) ? indentString + quoteChar + 'use strict' + quoteChar + ';\n' : '';
       // If options.module is a function, use that to get the targetModule
       if (grunt.util.kindOf(targetModule) === 'function') {
         targetModule = targetModule(f, target);
@@ -190,7 +190,7 @@ module.exports = function(grunt) {
 
       if (options.singleModule) {
         if (options.target === 'js') {
-          bundle = "angular.module('" + targetModule + "', []).run(['$templateCache', function($templateCache) {\n" + strict;
+          bundle = "angular.module('" + targetModule + "', []).run(['$templateCache', function($templateCache) {\n";
           modules += '\n}]);\n';
         } else if (options.target === 'coffee') {
           bundle = "angular.module('" + targetModule + "', []).run(['$templateCache', ($templateCache) ->\n";
@@ -208,7 +208,8 @@ module.exports = function(grunt) {
       grunt.file.write(f.dest, grunt.util.normalizelf(fileHeader + bundle + modules + fileFooter));
     });
     //Just have one output, so if we making thirty files it only does one line
-    grunt.log.writeln("Successfully converted "+(""+counter).green +
-                      " html templates to " + options.target + ".");
+    grunt.log.writeln("Successfully converted " + ("" + counter).green +
+      " html templates to " + options.target + ".");
   });
 };
+
